@@ -1,0 +1,21 @@
+name: publish-docker
+on:
+  create:
+    tags:
+      - 'v*'
+jobs:
+  publish-docker:
+    runs-on: windows-2019
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker images
+        uses: mr-smithers-excellent/docker-build-push@v6
+        with:
+          image: 131hub/shellwin
+          registry: docker.io
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          addLatest: true
