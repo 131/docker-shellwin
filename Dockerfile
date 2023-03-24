@@ -15,4 +15,4 @@ ADD ./sshd_config C:\\ProgramData\\ssh\\sshd_config
 ADD start-sshd.ps1 .
 ENTRYPOINT ["powershell.exe", "-command"]
 CMD ["./start-sshd.ps1"]
-LABEL "org.opencontainers.image.version"="0.0.1"
+LABEL "org.opencontainers.image.version"="0.0.2"
