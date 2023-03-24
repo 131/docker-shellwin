@@ -20,6 +20,8 @@ PermitRootLogin prohibit-password
 #MaxSessions 10
 
 #PubkeyAuthentication yes
+PubkeyAcceptedKeyTypes=+ssh-rsa
+
 #AuthorizedPrincipalsFile none
 
 # For this to work you will also need host keys in %programData%/ssh/ssh_known_hosts
