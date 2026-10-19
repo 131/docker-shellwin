@@ -1,3 +1,8 @@
+param(
+  [Parameter(Mandatory)][string]$ExpectedVersion,
+  [Parameter(Mandatory)][string]$ExpectedRevision
+)
+
 $ErrorActionPreference = 'Stop'
 
 function Invoke-Checked {
@@ -14,8 +19,11 @@ if ($image.Os -ne 'windows' -or $image.Architecture -ne 'amd64') {
   throw 'Expected a windows/amd64 image'
 }
 if ($image.OsVersion -notlike '10.0.20348.*') { throw 'Expected LTSC 2022' }
-if ($image.Config.Labels.'org.opencontainers.image.version' -ne '2.0.0') {
-  throw 'Expected version 2.0.0'
+if ($image.Config.Labels.'org.opencontainers.image.version' -ne $ExpectedVersion) {
+  throw "Expected version $ExpectedVersion"
+}
+if ($image.Config.Labels.'org.opencontainers.image.revision' -ne $ExpectedRevision) {
+  throw "Expected Git revision $ExpectedRevision"
 }
 
 $keys = Join-Path $env:RUNNER_TEMP 'shellwin-test-keys'

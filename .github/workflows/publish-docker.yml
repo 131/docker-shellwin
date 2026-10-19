@@ -7,6 +7,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+concurrency:
+  group: shellwin-release
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -17,32 +21,57 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $dockerfile = Get-Content Dockerfile -Raw
+          $match = [regex]::Match($dockerfile, '"org.opencontainers.image.version"="(\d+\.\d+\.\d+)"')
+          if (-not $match.Success) { throw 'Missing semantic image version in Dockerfile' }
+          $version = $match.Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Git tag does not match Dockerfile version'
+          }
+          "IMAGE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Build Docker image
         shell: pwsh
         run: |
-          docker build --tag shellwin:test .
+          docker build --tag shellwin:test `
+            --label "org.opencontainers.image.revision=$env:GITHUB_SHA" `
+            --label "org.opencontainers.image.source=https://github.com/$env:GITHUB_REPOSITORY" .
           if ($LASTEXITCODE -ne 0) { throw 'Docker build failed' }
 
       - name: Test image and SSH access
         shell: pwsh
         run: |
           try {
-            ./.github/scripts/test-image.ps1
+            ./.github/scripts/test-image.ps1 -ExpectedVersion $env:IMAGE_VERSION -ExpectedRevision $env:GITHUB_SHA
           } catch {
             $message = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
             Write-Output "::error::$message"
             throw
           }
 
+      - name: Check version tags are unpublished
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        shell: pwsh
+        run: |
+          foreach ($tag in @($env:IMAGE_VERSION, "v$env:IMAGE_VERSION")) {
+            $response = Invoke-WebRequest "https://hub.docker.com/v2/repositories/131hub/shellwin/tags/$tag" -SkipHttpErrorCheck
+            if ($response.StatusCode -ne 404) {
+              throw "Refusing to publish ${tag}: registry returned HTTP $($response.StatusCode) instead of 404"
+            }
+          }
+
       - name: Push Docker image
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         shell: pwsh
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
-          $version = docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' shellwin:test
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect image version' }
-          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+          $version = $env:IMAGE_VERSION
+          if ($env:GITHUB_REF_TYPE -ne 'tag' -or $env:GITHUB_REF_NAME -ne "v$version") {
             throw 'Git tag does not match image version'
           }
           $env:DOCKER_PASSWORD | docker login --username $env:DOCKER_USERNAME --password-stdin
