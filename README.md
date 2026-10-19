@@ -9,21 +9,9 @@
 Version `2.0.1` uses Windows Server Core LTSC 2022.
 
 # Releases
-After committing implementation changes and checking the working tree is clean,
-run `ppackage version patch` (or an explicit semantic version) from the repository
-root. `ppackage` updates the Dockerfile version and creates the release commit
-and Git tag. Align the README example with the selected version before preparing the release.
-Review the generated commit and tag, then push the branch and that exact tag.
-Do not edit the Dockerfile version or create release tags manually.
-
-Pushes to `master` and manual workflow runs build and test only. Publishing requires
-a Git tag `vX.Y.Z` matching the Dockerfile version, and successful image/SSH tests.
-The workflow refuses to overwrite existing version tags; only `latest` is mutable.
-Published images carry OCI version, source, and Git revision labels.
-
-Version `2.0.0` remains available, but was published from `master` after CI fixes
-that are not included in its Git tag. Use `2.0.1` for the tagged release with
-verified Git revision metadata.
+Use `ppackage version patch` (or an explicit semantic version) on a clean checkout,
+then push the generated commit and tag. CI builds and publishes the image using
+the Git tag (`vX.Y.Z`) and updates `latest`.
 
 # Configuration
 Define `SHELL_AUTHORIZED_USERS` (path to authorized key file) and `SHELL_SERVER_KEY_PATH` as environnement vars.
@@ -37,7 +25,7 @@ The only available user is `root`. So connect to this container using `ssh root@
 ```
 services:
   shellwin:
-    image: 131hub/shellwin:2.0.1
+    image: 131hub/shellwin:v2.0.1
 
     # publish ssh server
     ports:
