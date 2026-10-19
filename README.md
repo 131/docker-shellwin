@@ -5,6 +5,9 @@
 # Motivation
 [`131hub/shellwin`](https://hub.docker.com/r/131hub/shellwin) is a **docker image** bringing simple OpenSSH shell server container to your windows host. You can use it as a DOCKER_HOST gateway (using ssh) to a windows host.
 
+# Version
+Version `2.0.0` uses Windows Server Core LTSC 2022.
+
 # Configuration
 Define `SHELL_AUTHORIZED_USERS` (path to authorized key file) and `SHELL_SERVER_KEY_PATH` as environnement vars.
 Permission on those file will be automaticaly set by the container.
@@ -17,7 +20,7 @@ The only available user is `root`. So connect to this container using `ssh root@
 ```
 services:
   shellwin:
-    image: 131hub/shellwin
+    image: 131hub/shellwin:2.0.0
 
     # publish ssh server
     ports:
