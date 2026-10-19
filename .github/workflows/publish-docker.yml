@@ -1,6 +1,8 @@
 name: publish-docker
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
   workflow_dispatch:
@@ -13,7 +15,7 @@ jobs:
     runs-on: windows-2022
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build Docker image
         shell: pwsh
@@ -23,7 +25,14 @@ jobs:
 
       - name: Test image and SSH access
         shell: pwsh
-        run: ./.github/scripts/test-image.ps1
+        run: |
+          try {
+            ./.github/scripts/test-image.ps1
+          } catch {
+            $message = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error::$message"
+            throw
+          }
 
       - name: Push Docker image
         shell: pwsh

@@ -18,17 +18,17 @@ if ($image.Config.Labels.'org.opencontainers.image.version' -ne '2.0.0') {
 
 $keys = Join-Path $env:RUNNER_TEMP 'shellwin-test-keys'
 New-Item -ItemType Directory -Force $keys | Out-Null
-Invoke-Checked ssh-keygen @('-t', 'ed25519', '-N', '', '-f', "$keys/host_key")
-Invoke-Checked ssh-keygen @('-t', 'ed25519', '-N', '', '-f', "$keys/client_key")
+Invoke-Checked -Command ssh-keygen -Arguments @('-t', 'ed25519', '-N', '', '-f', "$keys/host_key")
+Invoke-Checked -Command ssh-keygen -Arguments @('-t', 'ed25519', '-N', '', '-f', "$keys/client_key")
 Copy-Item "$keys/client_key.pub" "$keys/authorized_keys"
 
 $container = 'shellwin-smoke-test'
 try {
-  Invoke-Checked docker @('create', '--name', $container, '-p', '127.0.0.1::22',
+  Invoke-Checked -Command docker -Arguments @('create', '--name', $container, '-p', '127.0.0.1::22',
     '-e', 'SHELL_AUTHORIZED_USERS=C:\testkeys\authorized_keys',
     '-e', 'SHELL_SERVER_KEY_PATH=C:\testkeys\host_key', 'shellwin:test')
-  Invoke-Checked docker @('cp', $keys, "${container}:C:\testkeys")
-  Invoke-Checked docker @('start', $container)
+  Invoke-Checked -Command docker -Arguments @('cp', $keys, "${container}:C:\testkeys")
+  Invoke-Checked -Command docker -Arguments @('start', $container)
   $binding = docker inspect --format '{{ (index (index .NetworkSettings.Ports "22/tcp") 0).HostPort }}' $container
   if ($LASTEXITCODE -ne 0) { throw 'Cannot find SSH port' }
   $connected = $false
