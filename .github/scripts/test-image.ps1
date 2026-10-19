@@ -2,8 +2,10 @@ $ErrorActionPreference = 'Stop'
 
 function Invoke-Checked {
   param([string]$Command, [string[]]$Arguments)
-  & $Command @Arguments
-  if ($LASTEXITCODE -ne 0) { throw "$Command failed ($LASTEXITCODE)" }
+  $output = & $Command @Arguments 2>&1
+  $exitCode = $LASTEXITCODE
+  $output | Write-Output
+  if ($exitCode -ne 0) { throw "$Command failed ($exitCode): $output" }
 }
 
 $image = docker inspect shellwin:test | ConvertFrom-Json
@@ -24,17 +26,17 @@ Copy-Item "$keys/client_key.pub" "$keys/authorized_keys"
 
 $container = 'shellwin-smoke-test'
 try {
-  Invoke-Checked -Command docker -Arguments @('create', '--name', $container, '-p', '127.0.0.1::22',
+  Invoke-Checked -Command docker -Arguments @('create', '--name', $container,
     '-e', 'SHELL_AUTHORIZED_USERS=C:\testkeys\authorized_keys',
     '-e', 'SHELL_SERVER_KEY_PATH=C:\testkeys\host_key', 'shellwin:test')
   Invoke-Checked -Command docker -Arguments @('cp', $keys, "${container}:C:\testkeys")
   Invoke-Checked -Command docker -Arguments @('start', $container)
-  $binding = docker inspect --format '{{ (index (index .NetworkSettings.Ports "22/tcp") 0).HostPort }}' $container
-  if ($LASTEXITCODE -ne 0) { throw 'Cannot find SSH port' }
+  $address = docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $container
+  if ($LASTEXITCODE -ne 0 -or -not $address) { throw 'Cannot find container address' }
   $connected = $false
   for ($attempt = 0; $attempt -lt 30; $attempt++) {
-    & ssh -i "$keys/client_key" -p $binding -o BatchMode=yes -o StrictHostKeyChecking=no `
-      -o "UserKnownHostsFile=$keys/known_hosts" -o ConnectTimeout=5 root@127.0.0.1 'docker --version'
+    & ssh -i "$keys/client_key" -p 22 -o BatchMode=yes -o StrictHostKeyChecking=no `
+      -o "UserKnownHostsFile=$keys/known_hosts" -o ConnectTimeout=5 "root@$address" 'docker --version'
     if ($LASTEXITCODE -eq 0) { $connected = $true; break }
     Start-Sleep -Seconds 2
   }
